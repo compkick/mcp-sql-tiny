@@ -1,11 +1,12 @@
 .venv/
 __pycache__/
-pytest-cache-*/
-.pytest_cache/
 *.pyc
 *.pyo
-*.log
-tmp*/
 .env
 .env.*
+*.log
+.pytest_cache/
+pytest-cache-files-*
+.mypy_cache/
+.python-version
 !.env.example

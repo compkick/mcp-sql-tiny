@@ -170,3 +170,60 @@ The database connection values stay in this repo's local `.env`, not in Codex `c
 * `describe_table()` accepts `database.schema.table`, but cross-database metadata lookup is intentionally blocked unless the requested database matches the connected database.
 * For local development, `TrustServerCertificate=yes` is often necessary with self-signed certs.
 * For Azure SQL, prefer Microsoft Entra authentication where possible.
+
+## Security model
+
+This server is designed to reduce risk, not eliminate it completely.
+
+* `run_query_readonly()` and `run_query_preview()` only accept statements that begin with read-only keywords and reject a blocklist of write and admin keywords.
+* The arbitrary SQL tools reject multiple statements in one request.
+* `list_tables()` and `describe_table()` only accept simple identifier inputs, not arbitrary SQL fragments.
+* Row caps are enforced on fetch size, with configurable default and hard limits.
+* Optional database and schema allowlists can narrow what the tools are allowed to inspect.
+* This is still a direct SQL Server or Azure SQL client using your credentials. It does not sandbox the database itself, replace SQL Server permissions, or provide complete SQL parsing guarantees.
+
+Use least-privilege credentials and keep the allowed databases and schemas narrow if you plan to share this setup.
+
+## Why this exists (design rationale)
+
+* Safer than generic SQL MCP servers
+* Smaller blast radius
+* Predictable outputs
+* Easy to reason about
+* Matches execution-focused database and DevOps workflows
+* Can be extended later with export helpers and workflow-specific Codex skills
+
+## Changelog
+
+This project uses semantic versioning. `0.1.0` is the current project version.
+
+### 0.1.0
+
+First project release of the MSSQL Tiny MCP Server.
+
+Included in this release:
+
+* Core MCP tools for `ping`, `discover_context`, `list_schemas`, `list_tables`, `describe_table`, `run_query_preview`, and `run_query_readonly`
+* Read-only SQL enforcement with row caps, multi-statement rejection, and optional database and schema allowlists
+* `warmup()` and `healthcheck()` helpers for startup diagnostics and connection testing
+* Local `.env` loading via `python-dotenv` and a matching `.env.example`
+* Smoke test script via `python test_server.py`
+* Pytest coverage for local safety and query-construction logic
+* MIT licensing and versioned dependency ranges in `requirements.txt`
+* README setup guidance for local SQL Server and Azure SQL connection-string-based authentication
+
+## Future roadmap
+
+* `export_query_jsonl(sql, path)`
+* `export_query_parquet(sql, path)`
+* Optional cross-database metadata support with explicit allowlists
+* Stored procedure and view introspection helpers that remain read-only
+* Python package artifacts (`pyproject.toml`, wheel, source distribution)
+* Structured logging
+* Containerization (Docker)
+* Optional connection profiles for local SQL Server, Azure SQL Database, and managed identity scenarios
+* Codex skills for common MSSQL workflows such as schema exploration, query shaping, performance triage, and safe troubleshooting playbooks
+
+## License / usage
+
+Released under the MIT License. See [LICENSE](/LICENSE).
