@@ -1,6 +1,6 @@
 # MSSQL Tiny MCP Server
 
-MCP MSSQL Tiny is a small, local-first MCP server that helps Codex and other MCP-aware tools connect to Microsoft SQL Server and Azure SQL with a practical setup and explicit read-only guardrails. It uses Microsoft's official `mssql-python` driver, loads a repo-local `.env`, and keeps the surface area small: health checks, connection warmup, schema and table inspection, and guarded read-only query execution.
+MCP MSSQL Tiny is a small, local-first MCP server that helps Codex and other MCP-aware tools connect to Microsoft SQL Server and Azure SQL with a practical setup and explicit read-only guardrails. The tool uses Microsoft's official `mssql-python` driver, loads a repo-local `.env`, and keeps the surface area small: health checks, connection warmup, schema and table inspection, and guarded read-only query execution.
 
 This project is intentionally narrow. It is for local development, private internal tooling, and safe data inspection workflows. It is not an admin console, migration runner, or write-capable SQL automation layer.
 
@@ -15,7 +15,7 @@ This project is intentionally narrow. It is for local development, private inter
 * `healthcheck()` and `warmup()` helpers for startup diagnostics
 * Lightweight smoke test and unit tests
 
-## What this is NOT
+## Exclusions
 
 * Not a full SQL Server admin tool
 * Not a replacement for database permissions
@@ -216,6 +216,8 @@ Included in this release:
 
 * `export_query_jsonl(sql, path)`
 * `export_query_parquet(sql, path)`
+* Opt-in live integration tests for real SQL Server connections and MCP tool behavior
+* General `verify_venv` helper for Python environment sanity checks across projects
 * Optional cross-database metadata support with explicit allowlists
 * Stored procedure and view introspection helpers that remain read-only
 * Python package artifacts (`pyproject.toml`, wheel, source distribution)
