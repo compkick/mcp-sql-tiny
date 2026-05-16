@@ -216,6 +216,7 @@ Included in this release:
 
 * `export_query_jsonl(sql, path)`
 * `export_query_parquet(sql, path)`
+* Opt-in live integration tests for real SQL Server connections and MCP tool behavior
 * General `verify_venv` helper for Python environment sanity checks across projects
 * Optional cross-database metadata support with explicit allowlists
 * Stored procedure and view introspection helpers that remain read-only

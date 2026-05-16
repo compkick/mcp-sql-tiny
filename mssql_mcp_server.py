@@ -25,17 +25,25 @@ import mssql_python
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
+# ----------------------------
+# Bootstrap
+# ----------------------------
+
 mcp = FastMCP("mssql-tiny")
 PROJECT_DIR = Path(__file__).resolve().parent
 
 load_dotenv(PROJECT_DIR / ".env")
+
+# ----------------------------
+# SQL guardrails
+# ----------------------------
 
 ALLOWED_PREFIXES = (
     "SELECT",
     "WITH",
 )
 
-BLOCKLIST = re.compile(
+BLOCKED_COMMANDS = re.compile(
     r"\b("
     r"INSERT|UPDATE|DELETE|MERGE|CREATE|ALTER|DROP|TRUNCATE|REPLACE|"
     r"GRANT|REVOKE|DENY|"
@@ -54,6 +62,10 @@ BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 CONFIG_WARNINGS: list[str] = []
+
+# ----------------------------
+# SQL text helpers
+# ----------------------------
 
 
 def _strip_comments(sql_text: str) -> str:
@@ -105,6 +117,11 @@ def _validate_table_name(full_name: str) -> tuple[str | None, str, str]:
     raise ValueError("Blocked: full_name must be schema.table or database.schema.table.")
 
 
+# ----------------------------
+# Environment and configuration
+# ----------------------------
+
+
 def _load_allowlist_env() -> tuple[set[str], set[str]]:
     databases = set(filter(None, (os.getenv("MSSQL_ALLOWED_DATABASES", "")).split(",")))
     schemas = set(filter(None, (os.getenv("MSSQL_ALLOWED_SCHEMAS", "")).split(",")))
@@ -148,6 +165,8 @@ _WARMUP_LAST_OK: int | None = None
 _WARMUP_LAST_ERROR: str | None = None
 
 
+# region connection and query helpers
+
 def _env(name: str) -> str:
     value = os.getenv(name)
     if not value or not value.strip():
@@ -181,7 +200,7 @@ def _enforce_readonly(sql_text: str) -> None:
     if _contains_multiple_statements(sql_text):
         raise ValueError("Blocked: multiple SQL statements are not allowed.")
 
-    if BLOCKLIST.search(sql_text):
+    if BLOCKED_COMMANDS.search(sql_text):
         raise ValueError("Blocked: query contains a non-read-only keyword.")
 
 
@@ -207,17 +226,40 @@ def _fetch(cur, max_rows: int) -> dict[str, Any]:
     }
 
 
+def _description_columns(cur) -> list[str]:
+    return [d[0] for d in (cur.description or [])]
+
+
+def _row_to_mapping(row: Any, columns: list[str]) -> dict[str, Any]:
+    if row is None:
+        raise RuntimeError("Query returned no rows.")
+    if isinstance(row, dict):
+        return row
+    if hasattr(row, "_asdict"):
+        return row._asdict()
+
+    try:
+        return {column: row[index] for index, column in enumerate(columns)}
+    except Exception:
+        pass
+
+    try:
+        values = list(row)
+    except Exception as exc:
+        raise RuntimeError(f"Unexpected row shape returned by query: {type(row)!r}") from exc
+
+    return {column: values[index] for index, column in enumerate(columns)}
+
+
 def _current_database(conn) -> str:
     with conn.cursor() as cur:
         cur.execute("SELECT CAST(DB_NAME() AS nvarchar(128)) AS current_database")
+        columns = _description_columns(cur)
         row = cur.fetchone()
-    if isinstance(row, dict):
-        return str(row["current_database"])
-    if hasattr(row, "current_database"):
-        return str(row.current_database)
-    if isinstance(row, (list, tuple)) and row:
-        return str(row[0])
-    raise RuntimeError("Unable to determine current database from the SQL connection.")
+    payload = _row_to_mapping(row, columns)
+    if "current_database" not in payload:
+        raise RuntimeError("Unable to determine current database from the SQL connection.")
+    return str(payload["current_database"])
 
 
 def _enforce_allowlists(schema: str, database: str | None = None) -> None:
@@ -243,11 +285,6 @@ def _resolve_validated_table_name(
         )
     _enforce_allowlists(schema=schema, database=database)
     return database, schema, table
-
-
-def _resolve_table_name(full_name: str, conn) -> tuple[str, str, str]:
-    database, schema, table = _validate_table_name(full_name)
-    return _resolve_validated_table_name(database, schema, table, conn)
 
 
 def _engine_edition_name(value: Any) -> str:
@@ -283,12 +320,14 @@ def _warmup_worker() -> None:
         with _WARMUP_LOCK:
             _WARMUP_INFLIGHT = False
 
+#end region
+
+# region MCP tools
 
 @mcp.tool()
 def ping() -> dict[str, Any]:
     """Sanity check that the MCP server is running."""
     return {"status": "ok", "server": "mssql-tiny", "time": int(time.time())}
-
 
 @mcp.tool()
 def healthcheck(probe: bool = False) -> dict[str, Any]:
@@ -358,23 +397,10 @@ def discover_context() -> dict[str, Any]:
     with _connect() as conn:
         with conn.cursor() as cur:
             cur.execute(query)
+            columns = _description_columns(cur)
             row = cur.fetchone()
 
-    if isinstance(row, dict):
-        payload = row
-    elif hasattr(row, "_asdict"):
-        payload = row._asdict()
-    elif isinstance(row, (list, tuple)):
-        payload = {
-            "current_database": row[0],
-            "login_name": row[1],
-            "server_name": row[2],
-            "edition": row[3],
-            "engine_edition": row[4],
-        }
-    else:
-        raise RuntimeError("Unexpected row shape returned by discover_context().")
-
+    payload = _row_to_mapping(row, columns)
     payload["deployment_hint"] = _engine_edition_name(payload.get("engine_edition"))
     return payload
 
@@ -452,8 +478,8 @@ def describe_table(full_name: str) -> dict[str, Any]:
             NUMERIC_SCALE AS numeric_scale
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_CATALOG = ?
-          AND TABLE_SCHEMA = ?
-          AND TABLE_NAME = ?
+            AND TABLE_SCHEMA = ?
+            AND TABLE_NAME = ?
         ORDER BY ORDINAL_POSITION
         """
         with conn.cursor() as cur:
@@ -464,8 +490,8 @@ def describe_table(full_name: str) -> dict[str, Any]:
 @mcp.tool()
 def run_query_readonly(sql_text: str, max_rows: int = DEFAULT_MAX_ROWS) -> dict[str, Any]:
     """
-    Run a read-only query. Enforces allowed prefixes + blocklist + row caps.
-    Returns columns, rows, and row_count.
+    Run a read-only query. Enforces allowed prefixes + commands + row caps.
+    Returns columns, rows, and row_count
     """
     _enforce_readonly(sql_text)
     max_rows = _cap_rows(max_rows)
@@ -486,6 +512,11 @@ def run_query_preview(sql_text: str, max_rows: int = 50) -> dict[str, Any]:
     """Run a read-only query with a small default row cap for quick previews."""
     return run_query_readonly(sql_text, max_rows=max_rows)
 
+
+# endregoin
+
+
+# entrypoint (stdio transport)
 
 if __name__ == "__main__":
     mcp.run()

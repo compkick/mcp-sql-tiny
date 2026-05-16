@@ -41,6 +41,14 @@ class DummyConnection:
         return self._cursor
 
 
+class IndexableRow:
+    def __init__(self, *values):
+        self._values = values
+
+    def __getitem__(self, index):
+        return self._values[index]
+
+
 def test_validate_identifier_rejects_statement_shaped_input() -> None:
     with pytest.raises(ValueError, match="simple identifier"):
         server._validate_identifier("dbo; DROP TABLE x", "schema")
@@ -112,7 +120,7 @@ def test_describe_table_rejects_comment_suffix(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_describe_table_blocks_cross_database_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
-    cursor = DummyCursor(rows=[("CurrentDb",)])
+    cursor = DummyCursor(description=[("current_database",)], rows=[("CurrentDb",)])
 
     def fake_connect():
         return DummyConnection(cursor)
@@ -139,3 +147,26 @@ def test_healthcheck_reports_config_warnings(monkeypatch: pytest.MonkeyPatch) ->
     result = server.healthcheck(probe=False)
 
     assert result["config_warnings"] == ["Invalid integer for MSSQL_DEFAULT_MAX_ROWS"]
+
+
+def test_discover_context_handles_indexable_row_object(monkeypatch: pytest.MonkeyPatch) -> None:
+    cursor = DummyCursor(
+        description=[
+            ("current_database",),
+            ("login_name",),
+            ("server_name",),
+            ("edition",),
+            ("engine_edition",),
+        ],
+        rows=[IndexableRow("master", "sa", "localhost", "Express Edition", 4)],
+    )
+
+    def fake_connect():
+        return DummyConnection(cursor)
+
+    monkeypatch.setattr(server, "_connect", fake_connect)
+
+    result = server.discover_context()
+
+    assert result["current_database"] == "master"
+    assert result["deployment_hint"] == "express"
