@@ -1,12 +1,10 @@
 # MSSQL Tiny MCP Server
 
-MCP MSSQL Tiny is a small, local-first development utility, not a packaged database product. The tool helps developers use Codex and other MCP-aware tools (i.e. Claude) connect to Microsoft SQL Server and Azure SQL with a practical setup and explicit read-only guardrails.
+MSSQL Tiny MCP Server is a small, local-first development utility, not a packaged database product. The tool helps developers use Codex and other MCP-aware agents (i.e. Claude) connect to Microsoft SQL Server and Azure SQL with a practical setup and read-only guardrails.
 
-This tool uses Microsoft's official `mssql-python` driver, loads a repo-local `.env`, and keeps the surface area small: health checks, connection warmup, schema and table inspection, and guarded read-only query execution.
+This tool uses Microsoft's official `mssql-python` driver, loads a repo-local `.env`, and keeps the surface area small. It offers health checks, connection warmup, schema and table inspection, and guarded read-only query execution.
 
-This project is intentionally narrow. It is for local development, private internal tooling, and safe data inspection workflows. It is not an admin console, migration runner, or write-capable SQL automation layer.
-
-Status: ready for use and publish!
+This project is intentionally narrow. It is for local development, private internal tooling, database analysis and planning, and safe data inspection workflows. It is not an admin console, migration runner, or write-capable SQL automation layer.
 
 ## Features
 
@@ -19,24 +17,28 @@ Status: ready for use and publish!
 * Configurable query timeout and row caps
 * `healthcheck()` and `warmup()` helpers for startup diagnostics
 * Lightweight smoke test and unit tests
+* Safer than generic SQL MCP servers
+* Easy analysis and inspection of SQL databases
+* Matches execution-focused database and DevOps workflows
+* Can be extended later with export helpers and workflow-specific Codex skills
 
 ## Exclusions
 
 * Not a full SQL Server admin tool
 * Not a replacement for database permissions
 * Does not run writes, DDL, or stored procedures
-* Does not manage login provisioning or Azure setup for you
+* Does not manage login provisioning or Azure setup
 
 ## Requirements
 
 * **Python 3.10+**
 * Windows, macOS, or Linux
 * Access to Microsoft SQL Server, Azure SQL Database, or Azure SQL Managed Instance
-* Codex or another MCP-aware client
+* Codex or another MCP-aware coding agent
 
 ## Quickstart
 
-From the repo root in PowerShell:
+Clone repo from Github, then from the repo root in PowerShell:
 
 ```powershell
 py -3.14 -m venv .venv
@@ -54,31 +56,9 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-## Running the server manually
-
-```powershell
-python mssql_mcp_server.py
-```
-
-You should see no output because MCP uses stdio.
-
-## Codex MCP configuration
-
-Add this to your Codex config file:
-
-```toml
-[mcp_servers.mssql_tiny]
-command = 'PROJECT_DIR\mcp-sql-tiny\.venv\Scripts\python.exe'
-args = ['PROJECT_DIR\mcp-sql-tiny\mssql_mcp_server.py']
-```
-
-Replace `PROJECT_DIR` with the full path to the parent folder where this repo lives.
-
-The database connection values stay in this repo's local `.env`, not in Codex `config.toml`.
-
 ## Environment variables
 
-The server loads a repo-local `.env` file automatically via `python-dotenv`.
+Create your .env from the .env.example, then add the required values and follow the authentication examples below. The server will load your repo-local `.env` file automatically via `python-dotenv`.
 
 Required:
 
@@ -93,6 +73,28 @@ Optional limits:
 | `MSSQL_QUERY_TIMEOUT_SECONDS` | Query timeout passed to `mssql-python` (default: `30`; `0` means driver default/no timeout) |
 | `MSSQL_DEFAULT_MAX_ROWS` | Default row cap (default: `1000`) |
 | `MSSQL_HARD_MAX_ROWS` | Absolute row cap (default: `5000`) |
+
+## Codex MCP configuration
+
+Add this to your Codex config file:
+
+```toml
+[mcp_servers.mssql_tiny]
+command = 'PROJECT_DIR\mcp-sql-tiny\.venv\Scripts\python.exe'
+args = ['PROJECT_DIR\mcp-sql-tiny\mssql_mcp_server.py']
+```
+
+Replace `PROJECT_DIR` with the full path to the parent folder where you cloned the repo.
+
+The database connection values stay in this repo's local `.env`, not in Codex `config.toml`.
+
+## Running the server manually
+
+```powershell
+python mssql_mcp_server.py
+```
+
+You should see no output because MCP uses stdio.
 
 ## Authentication examples
 
@@ -223,15 +225,6 @@ ALTER ROLE [db_datareader] ADD MEMBER [mcp_reader];
 
 Repeat the database-level `CREATE USER` and `ALTER ROLE` statements for each database this MCP login should inspect.
 
-## Why this exists (design rationale)
-
-* Safer than generic SQL MCP servers
-* Smaller blast radius
-* Predictable outputs
-* Easy to reason about
-* Matches execution-focused database and DevOps workflows
-* Can be extended later with export helpers and workflow-specific Codex skills
-
 ## Changelog
 
 This project uses semantic versioning. `0.1.1` is the current project version.
@@ -283,3 +276,7 @@ Included in this release:
 ## License / usage
 
 Released under the MIT License. See [LICENSE](/LICENSE).
+
+## Support / Questions
+
+View project page here - [https://computerkick.com/mcp-server-for-mssql
