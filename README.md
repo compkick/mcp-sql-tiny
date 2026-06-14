@@ -279,4 +279,4 @@ Released under the MIT License. See [LICENSE](/LICENSE).
 
 ## Support / Questions
 
-View project page here - [https://computerkick.com/mcp-server-for-mssql
+View project page here - https://computerkick.com/mcp-server-for-mssql
