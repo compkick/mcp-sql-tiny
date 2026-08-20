@@ -62,17 +62,17 @@ Create your .env from the .env.example, then add the required values and follow 
 
 Required:
 
-| Variable | Description |
-| --- | --- |
+| Variable                | Description                                                          |
+| ----------------------- | -------------------------------------------------------------------- |
 | `SQL_CONNECTION_STRING` | Standard SQL Server / Azure SQL connection string for `mssql-python` |
 
 Optional limits:
 
-| Variable | Purpose |
-| --- | --- |
+| Variable                      | Purpose                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------- |
 | `MSSQL_QUERY_TIMEOUT_SECONDS` | Query timeout passed to `mssql-python` (default: `30`; `0` means driver default/no timeout) |
-| `MSSQL_DEFAULT_MAX_ROWS` | Default row cap (default: `1000`) |
-| `MSSQL_HARD_MAX_ROWS` | Absolute row cap (default: `5000`) |
+| `MSSQL_DEFAULT_MAX_ROWS`      | Default row cap (default: `1000`)                                                           |
+| `MSSQL_HARD_MAX_ROWS`         | Absolute row cap (default: `5000`)                                                          |
 
 ## Codex MCP configuration
 
@@ -128,20 +128,20 @@ Add `Connection Timeout=15;` or a similar driver-supported connection timeout to
 
 ## MCP tools exposed
 
-| Tool | Description |
-| --- | --- |
-| `ping()` | Sanity check |
-| `healthcheck(probe?)` | Env readiness and optional live probe |
-| `verify_environment(probe?)` | Python, package, dotenv, row-limit, and optional SQL connectivity diagnostics |
-| `warmup()` | Trigger a background connection warmup |
-| `discover_context()` | Return server/database/login context |
-| `list_databases()` | List databases visible to the current login |
-| `list_schemas(database?)` | List schemas in the current or specified database |
-| `list_tables(schema?, database?)` | List base tables in the current or specified database |
-| `list_views(schema?, database?)` | List views in the current or specified database |
-| `describe_table(full_name)` | Describe a table or view with `schema.table` or `database.schema.table`, including keys, defaults, identity/computed flags, foreign keys, row estimate, and sensitive-name hints |
-| `run_query_preview(sql_text, max_rows?)` | Read-only query preview |
-| `run_query_readonly(sql_text, max_rows?)` | Read-only SQL with guardrails |
+| Tool                                      | Description                                                                                                                                                                      |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ping()`                                  | Sanity check                                                                                                                                                                     |
+| `healthcheck(probe?)`                     | Env readiness and optional live probe                                                                                                                                            |
+| `verify_environment(probe?)`              | Python, package, dotenv, row-limit, and optional SQL connectivity diagnostics                                                                                                    |
+| `warmup()`                                | Trigger a background connection warmup                                                                                                                                           |
+| `discover_context()`                      | Return server/database/login context                                                                                                                                             |
+| `list_databases()`                        | List databases visible to the current login                                                                                                                                      |
+| `list_schemas(database?)`                 | List schemas in the current or specified database                                                                                                                                |
+| `list_tables(schema?, database?)`         | List base tables in the current or specified database                                                                                                                            |
+| `list_views(schema?, database?)`          | List views in the current or specified database                                                                                                                                  |
+| `describe_table(full_name)`               | Describe a table or view with `schema.table` or `database.schema.table`, including keys, defaults, identity/computed flags, foreign keys, row estimate, and sensitive-name hints |
+| `run_query_preview(sql_text, max_rows?)`  | Read-only query preview                                                                                                                                                          |
+| `run_query_readonly(sql_text, max_rows?)` | Read-only SQL with guardrails                                                                                                                                                    |
 
 ## Read-only enforcement
 
@@ -272,6 +272,8 @@ Included in this release:
 * Containerization (Docker)
 * Optional connection profiles for local SQL Server, Azure SQL Database, and managed identity scenarios
 * Codex skills for common MSSQL workflows such as schema exploration, query shaping, performance triage, and safe troubleshooting playbooks
+* Add a driver or config switch, so the user can set up different database connections and db types, such as MSSQL, MySQL, MariaDB, etc
+* Turn into published and "installable" skill or MCP server?
 
 ## License / usage
 
